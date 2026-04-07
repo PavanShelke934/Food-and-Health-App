@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign In - NutriSync</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        body { display: flex; align-items: center; justify-content: center; min-height: 100vh; background-color: var(--bg-main); color: var(--text-main); margin: 0; }
+        .auth-container { max-width: 400px; width: 100%; padding: 40px; border-radius: 20px; text-align: center; }
+        .auth-container input { width: 100%; padding: 12px; margin: 10px 0; border-radius: 8px; border: 1px solid var(--border-color, #333); background: var(--bg-card, #13151f); color: var(--text-main); box-sizing: border-box; }
+        .auth-container button { width: 100%; padding: 12px; background: var(--accent-1, #b0ff4c); color: #000; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; margin-top: 10px; font-size: 16px; font-family: 'Outfit'; }
+        .auth-container button:hover { opacity: 0.9; }
+        .auth-links { margin-top: 20px; font-size: 14px; }
+        .auth-links a { color: var(--accent-2, #a374ff); text-decoration: none; }
+        .pwd-cont { position: relative; }
+        .pwd-cont i { position: absolute; right: 15px; top: 22px; cursor: pointer; color: #888; }
+        .error-msg { color: #ff4c4c; font-size: 14px; display: none; margin-top: 10px; }
+    </style>
+</head>
+<body>
+    <div class="auth-container glasseffect">
+        <div class="logo" style="justify-content: center; margin-bottom: 20px;">
+            <i class="ph-fill ph-leaf logo-icon"></i>
+            <h2>NutriSync</h2>
+        </div>
+        <h3>Welcome Back</h3>
+        <p style="color:var(--text-muted); font-size: 14px; margin-bottom: 20px;">Sign in to continue to your dashboard</p>
+        
+        <form id="signin-form">
+            <input type="email" id="email" placeholder="Email" required />
+            <div class="pwd-cont">
+                <input type="password" id="password" placeholder="Password" required />
+                <i class="ph ph-eye" id="togglePassword"></i>
+            </div>
+            <div class="error-msg" id="error-msg"></div>
+            <button type="submit">Sign In</button>
+        </form>
+
+        <div class="auth-links">
+            Don't have an account? <a href="signup.html">Sign Up</a>
+        </div>
+    </div>
+
+    <script type="module">
+        import { signIn } from './auth.js';
+        
+        const form = document.getElementById('signin-form');
+        const errorMsg = document.getElementById('error-msg');
+        
+        document.getElementById('togglePassword').addEventListener('click', function() {
+            const pwd = document.getElementById('password');
+            if (pwd.type === 'password') {
+                pwd.type = 'text';
+                this.classList.replace('ph-eye', 'ph-eye-slash');
+            } else {
+                pwd.type = 'password';
+                this.classList.replace('ph-eye-slash', 'ph-eye');
+            }
+        });
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.querySelector('button');
+            btn.textContent = 'Signing in...';
+            btn.disabled = true;
+            
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            const res = await signIn(email, password);
+            if (res.success) {
+                window.location.href = 'index.html';
+            } else {
+                errorMsg.textContent = res.error;
+                errorMsg.style.display = 'block';
+                btn.textContent = 'Sign In';
+                btn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>

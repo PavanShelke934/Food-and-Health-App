@@ -1,3 +1,8 @@
+import { auth } from './firebase.js';
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getUserProfile, getWeeklySteps, getHydrationCount, saveHydrationCount } from './firestoreService.js';
+import { logoutUser } from './auth.js';
+
 import { dashboardView } from './views/dashboard.js';
 import { mealsView } from './views/meals.js';
 import { activityView } from './views/activity.js';
@@ -15,7 +20,52 @@ const routes = {
 
 const viewContainer = document.getElementById('view-container');
 
+window.weeklySteps = [];
+
+// Auth Barrier
+onAuthStateChanged(auth, async (user) => {
+  if (!user) {
+    window.location.href = "signin.html";
+  } else {
+    console.log("Logged in as:", user.email);
+    await loadUserProfile();
+    window.weeklySteps = await getWeeklySteps();
+    navigate();
+  }
+});
+
+async function loadUserProfile() {
+    const profile = await getUserProfile();
+    if (!profile) return;
+    
+    // Sidebar profile
+    const nameEl = document.querySelector('.user-info h4');
+    if (nameEl) nameEl.textContent = profile.fullName;
+    
+    const planEl = document.querySelector('.user-info p');
+    if (planEl) planEl.textContent = profile.plan;
+    
+    // Modal profile
+    const modalContent = document.querySelector('.profile-modal');
+    if (modalContent) {
+        const modalH2 = modalContent.querySelector('h2');
+        if (modalH2) modalH2.textContent = profile.fullName;
+        
+        const modalPlan = modalContent.querySelector('.modal-plan');
+        if (modalPlan) modalPlan.textContent = profile.plan;
+        
+        const modalEmail = modalContent.querySelector('.modal-email');
+        if (modalEmail) modalEmail.textContent = profile.email;
+        
+        const modalJoined = modalContent.querySelector('.modal-joined');
+        if (modalJoined && profile.createdAt) {
+            modalJoined.textContent = `Joined ${new Date(profile.createdAt).toLocaleDateString()}`;
+        }
+    }
+}
+
 function navigate() {
+    if (!auth.currentUser) return; // Prevent navigation render if not logged in
     const hash = window.location.hash || '#dashboard';
     const view = routes[hash] || dashboardView;
     
@@ -37,6 +87,13 @@ function navigate() {
 
 function initViewScripts(hash) {
     if (hash === '#dashboard' || hash === '') {
+        // Personalize Header
+        const dashWelcome = document.querySelector('.top-header h1');
+        if (dashWelcome) {
+            const fullName = document.querySelector('.user-info h4')?.textContent || 'User';
+            dashWelcome.innerHTML = `Welcome back, ${fullName.split(' ')[0]}! 👋`;
+        }
+
         // Dashboard animations
         setTimeout(() => {
             const circle = document.querySelector('.progress-circle');
@@ -45,7 +102,7 @@ function initViewScripts(hash) {
             const fills = document.querySelectorAll('.progress-fill');
             fills.forEach(fill => {
                 const targetWidth = fill.getAttribute('data-width');
-                fill.style.width = targetWidth;
+                if (fill && targetWidth) fill.style.width = targetWidth;
             });
             
             initActivityBars();
@@ -60,20 +117,13 @@ function initViewScripts(hash) {
     }
 }
 
-const weeklySteps = [
-  { day: "Mon", steps: 4800 },
-  { day: "Tue", steps: 6500 },
-  { day: "Wed", steps: 5200 },
-  { day: "Thu", steps: 8800 },
-  { day: "Fri", steps: 8452 },
-  { day: "Sat", steps: 3100 },
-  { day: "Sun", steps: 4500 }
-];
-
 function getTrend(index) {
   if (index === 0) return { value: "0%", type: "neutral" };
-  const current = weeklySteps[index].steps;
-  const previous = weeklySteps[index - 1].steps;
+  const current = window.weeklySteps[index]?.steps || 0;
+  const previous = window.weeklySteps[index - 1]?.steps || 0;
+  
+  if(previous === 0) return { value: current > 0 ? "+100%" : "0%", type: current > 0 ? "up" : "neutral" };
+  
   const percent = Math.round(((current - previous) / previous) * 100);
 
   if (percent > 0) return { value: `+${percent}%`, type: "up" };
@@ -108,9 +158,13 @@ function initActivityBars() {
     const stepsCountTarget = document.getElementById('stepsCount');
     const trendBadge = document.getElementById('trendBadge');
     
+    // Find max step to scale the bars dynamically
+    const maxSteps = window.weeklySteps.length > 0 ? Math.max(...window.weeklySteps.map(s => s.steps), 10000) : 10000;
+    
     bars.forEach((bar, index) => {
         // Animation
-        const targetHeight = bar.getAttribute('data-height');
+        const targetSteps = window.weeklySteps[index] ? window.weeklySteps[index].steps : 0;
+        const targetHeight = `${(targetSteps / maxSteps) * 100}%`;
         setTimeout(() => bar.style.height = targetHeight, 100);
 
         // Click interaction
@@ -119,8 +173,7 @@ function initActivityBars() {
             bar.classList.add('active');
             
             if (stepsCountTarget && trendBadge) {
-                const targetSteps = weeklySteps[index] ? weeklySteps[index].steps : parseInt((bar.getAttribute('data-steps') || "0").replace(/,/g, ''));
-                if(weeklySteps[index]) {
+                if(window.weeklySteps[index]) {
                     animateNumber(stepsCountTarget, targetSteps);
                     
                     const trend = getTrend(index);
@@ -136,14 +189,16 @@ function initActivityBars() {
     });
 }
 
-function setupHydrationWidget(isLarge = false) {
+async function setupHydrationWidget(isLarge = false) {
     const suffix = isLarge ? '-large' : '';
     const hydroTitle = document.getElementById('water-count' + suffix);
     const hydroWave = document.getElementById('water-wave' + suffix);
     const hydroBtn = document.querySelector('.add-water-btn');
     
-    // We can use a global state to persist across views, but for UI demo local variables serve perfectly
-    window.waterGlasses = window.waterGlasses || 4; 
+    if(!window.waterGlassesLoaded){
+         window.waterGlasses = await getHydrationCount();
+         window.waterGlassesLoaded = true;
+    }
     const maxGlasses = 8;
     
     const updateUI = () => {
@@ -155,14 +210,19 @@ function setupHydrationWidget(isLarge = false) {
     updateUI();
 
     if (hydroBtn) {
-        hydroBtn.addEventListener('click', () => {
+        // Replace node to avoid multiple listeners across view re-renders
+        const newBtn = hydroBtn.cloneNode(true);
+        hydroBtn.parentNode.replaceChild(newBtn, hydroBtn);
+        
+        newBtn.addEventListener('click', async () => {
             if (window.waterGlasses < maxGlasses) {
                 window.waterGlasses++;
                 updateUI();
+                await saveHydrationCount(window.waterGlasses);
                 
                 // Pop animation
-                hydroBtn.style.transform = 'scale(0.9)';
-                setTimeout(() => hydroBtn.style.transform = 'scale(1)', 150);
+                newBtn.style.transform = 'scale(0.9)';
+                setTimeout(() => newBtn.style.transform = 'scale(1)', 150);
             }
         });
     }
@@ -170,8 +230,6 @@ function setupHydrationWidget(isLarge = false) {
 
 window.addEventListener('hashchange', navigate);
 window.addEventListener('DOMContentLoaded', () => {
-    navigate();
-
     // Theme Setup & Persistence
     const savedTheme = localStorage.getItem('theme');
     if (savedTheme === 'light') {
@@ -216,6 +274,13 @@ window.addEventListener('DOMContentLoaded', () => {
         if (e.key === 'Escape') closeProfile();
     });
 
+    const logoutBtn = document.querySelector('.modal-btn.logout');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', () => {
+            logoutUser();
+        });
+    }
+
     // Sidebar Responsiveness Setup
     const sidebar = document.getElementById('sidebar');
     const overlay = document.getElementById('sidebar-overlay');
@@ -245,20 +310,17 @@ window.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Handle Screen Resize Correctly
+    // Handle Screen Resize
     function handleResize() {
         const isMobile = window.innerWidth <= 900;
-        
         if (!isMobile) {
-            // Desktop: remove mobile states
             sidebar.classList.remove('open');
             if (overlay) overlay.classList.remove('show');
         } else {
-            // Mobile: remove desktop states
             sidebar.classList.remove('desktop-collapsed');
         }
     }
 
     window.addEventListener('resize', handleResize);
-    handleResize(); // initialize correct state depending on run size
+    handleResize(); 
 });
