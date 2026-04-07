@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Health & Nutrition Dashboard</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <!-- Stylesheet -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Mobile Header -->
+    <header class="mobile-header glasseffect">
+        <div class="logo">
+            <i class="ph-fill ph-leaf logo-icon"></i>
+            <h2>NutriSync</h2>
+        </div>
+        <div style="display: flex; gap: 10px; align-items: center;">
+            <button class="theme-toggle-btn" style="background:transparent; border:none; color:var(--text-main); font-size:24px; cursor:pointer;"><i class="ph ph-moon"></i></button>
+            <button id="hamburger-btn" class="hamburger-btn">
+                <i class="ph ph-list"></i>
+            </button>
+        </div>
+    </header>
+
+    <div id="sidebar-overlay" class="sidebar-overlay"></div>
+
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar glasseffect" id="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <i class="ph-fill ph-leaf logo-icon"></i>
+                    <h2 class="sidebar-text">NutriSync</h2>
+                </div>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <button class="theme-toggle-btn sidebar-text" style="background:transparent; border:none; color:var(--text-main); font-size:24px; cursor:pointer; min-width:32px; display:flex; justify-content:center;"><i class="ph ph-moon"></i></button>
+                    <button id="collapse-btn" class="collapse-btn"><i class="ph ph-caret-left"></i></button>
+                </div>
+            </div>
+            
+            <nav class="nav-links">
+                <a href="#dashboard" class="active"><i class="ph ph-squares-four"></i> <span class="nav-text sidebar-text">Dashboard</span></a>
+                <a href="#meals"><i class="ph ph-bowl-food"></i> <span class="nav-text sidebar-text">Meals</span></a>
+                <a href="#activity"><i class="ph ph-activity"></i> <span class="nav-text sidebar-text">Activity</span></a>
+                <a href="#hydration"><i class="ph ph-drop"></i> <span class="nav-text sidebar-text">Hydration</span></a>
+                <a href="#settings"><i class="ph ph-gear"></i> <span class="nav-text sidebar-text">Settings</span></a>
+            </nav>
+            <div class="user-profile">
+                <div class="avatar"><i class="ph-fill ph-user"></i></div>
+                <div class="user-info sidebar-text">
+                    <h4>Pavan Shelke</h4>
+                    <p>Free Plan</p>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content" id="view-container">
+            <!-- SPA Views Injected Here -->
+        </main>
+    </div>
+
+    <!-- User Profile Modal -->
+    <div id="profile-modal-overlay" class="modal-overlay">
+        <div class="profile-modal glasseffect">
+            <button class="modal-close-btn"><i class="ph ph-x"></i></button>
+            <div class="modal-avatar"><i class="ph-fill ph-user"></i></div>
+            <h2>Pavan Shelke</h2>
+            <p class="modal-plan">Free Plan</p>
+            <p class="modal-email">pavan.shelke@example.com</p>
+            <p class="modal-joined">Joined April 2026</p>
+            
+            <div class="modal-actions">
+                <button class="modal-btn edit"><i class="ph ph-pencil-simple"></i> Edit Profile</button>
+                <button class="modal-btn logout"><i class="ph ph-sign-out"></i> Logout</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="app.js"></script>
+</body>
+</html>
