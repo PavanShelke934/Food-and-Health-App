@@ -20,3 +20,8 @@
 - Premium accents using Neon Green (`#b0ff4c`) & Soft Purple (`#a374ff`).
 - Extensive use of modern Glassmorphism (backdrop blurring on translucent cards).
 - Outfit & Phosphor Icons used for typography and geometric iconography.
+
+## Recent Architecture Updates
+- **Security Improved:** Firebase configuration and API keys are moved into a separate `firebase-config.js` file, which is added to `.gitignore` to protect sensitive data. A `firebase-config.example.js` template is maintained in the repository for developer guidance.
+- **SPA Initialization Fixed:** Implemented a structured initialization sequence (`initApp` in `app.js`). The app now explicitly waits for Firebase `onAuthStateChanged` (wrapped in a Promise via `initAuth` in `auth.js`) and fetches prerequisite user data from Firestore *before* rendering the dashboard.
+- **Routing & Loading UX:** Unauthenticated users attempting to access protected routes are successfully redirected to `signin.html`. A "Loading dashboard..." UI spinner is displayed during the initial load to prevent empty screen flashes.

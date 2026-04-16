@@ -1,8 +1,15 @@
-export const dashboardView = `
+export const getDashboardView = (profile) => {
+    const firstName = profile?.fullName ? profile.fullName.split(' ')[0] : 'User';
+    const dailyGlasses = profile?.weight ? Math.ceil((profile.weight * 33) / 250) : 8;
+    const userGoal = profile?.goal === 'weight_loss' ? 'Weight Loss' : 
+                     profile?.goal === 'muscle_gain' ? 'Muscle Gain' : 
+                     'Maintenance';
+
+    return `
     <header class="top-header">
         <div>
-            <h1>Welcome back, Pavan! 👋</h1>
-            <p class="subtitle">Here's your health & nutrition summary for today.</p>
+            <h1>Welcome back, ${firstName}! 👋</h1>
+            <p class="subtitle">Current Goal: <strong>${userGoal}</strong></p>
         </div>
         <div class="header-actions">
             <button class="icon-btn glasseffect"><i class="ph ph-bell"></i></button>
@@ -115,11 +122,12 @@ export const dashboardView = `
         <div class="card glasseffect hydration-card">
             <div class="hydro-info">
                 <h3>Hydration</h3>
-                <h2><span id="water-count">4</span> / 8 <span class="unit">glasses</span></h2>
-                <p class="subtitle">1.2L total today</p>
+                <h2><span id="water-count">0</span> / ${dailyGlasses} <span class="unit">glasses</span><span id="hydro-max-secret" style="display:none;">${dailyGlasses}</span></h2>
+                <p class="subtitle">Stay hydrated!</p>
             </div>
             <button class="add-water-btn"><i class="ph ph-plus"></i></button>
             <div class="hydro-wave" id="water-wave"></div>
         </div>
     </div>
-`;
+    `;
+};

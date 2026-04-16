@@ -1,17 +1,18 @@
 import { auth } from './firebase.js';
-import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { getUserProfile, getWeeklySteps, getHydrationCount, saveHydrationCount } from './firestoreService.js';
-import { logoutUser } from './auth.js';
+import { getUserProfile, getWeeklySteps, getHydrationCount, saveHydrationCount, saveUserProfile } from './firestoreService.js';
+import { logoutUser, initAuth } from './auth.js';
 
-import { dashboardView } from './views/dashboard.js';
+import { getDashboardView } from './views/dashboard.js';
+import { onboardingView } from './views/onboarding.js';
 import { mealsView } from './views/meals.js';
 import { activityView } from './views/activity.js';
 import { hydrationView } from './views/hydration.js';
 import { settingsView } from './views/settings.js';
 
 const routes = {
-    '': dashboardView,
-    '#dashboard': dashboardView,
+    '': getDashboardView,
+    '#dashboard': getDashboardView,
+    '#onboarding': onboardingView,
     '#meals': mealsView,
     '#activity': activityView,
     '#hydration': hydrationView,
@@ -22,20 +23,33 @@ const viewContainer = document.getElementById('view-container');
 
 window.weeklySteps = [];
 
-// Auth Barrier
-onAuthStateChanged(auth, async (user) => {
-  if (!user) {
-    window.location.href = "signin.html";
-  } else {
+async function initApp() {
+    viewContainer.innerHTML = `
+        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; color: var(--text-muted);">
+            <i class="ph ph-spinner-gap ph-spin" style="font-size: 3rem; margin-bottom: 1rem; color: var(--primary);"></i>
+            <h3>Loading dashboard...</h3>
+        </div>
+    `;
+
+    const user = await initAuth();
+    if (!user) {
+        window.location.href = "signin.html";
+        return;
+    }
+
     console.log("Logged in as:", user.email);
-    await loadUserProfile();
-    window.weeklySteps = await getWeeklySteps();
+    try {
+        await loadUserProfile();
+        window.weeklySteps = await getWeeklySteps();
+    } catch (err) {
+        console.error("Error loading user data:", err);
+    }
     navigate();
-  }
-});
+}
 
 async function loadUserProfile() {
     const profile = await getUserProfile();
+    window.userProfile = profile;
     if (!profile) return;
     
     // Sidebar profile
@@ -65,9 +79,26 @@ async function loadUserProfile() {
 }
 
 function navigate() {
-    if (!auth.currentUser) return; // Prevent navigation render if not logged in
-    const hash = window.location.hash || '#dashboard';
-    const view = routes[hash] || dashboardView;
+    if (!auth.currentUser) {
+        window.location.href = "signin.html";
+        return;
+    }
+
+    let hash = window.location.hash || '#dashboard';
+
+    // Route Protection for onboarding
+    if (!window.userProfile && hash !== '#onboarding') {
+        window.location.hash = '#onboarding';
+        return;
+    } else if (window.userProfile && hash === '#onboarding') {
+        window.location.hash = '#dashboard';
+        return;
+    }
+
+    let view = routes[hash] || routes['#dashboard'];
+    if (typeof view === 'function') {
+        view = view(window.userProfile);
+    }
     
     // Inject the HTML template
     viewContainer.innerHTML = view;
@@ -87,13 +118,6 @@ function navigate() {
 
 function initViewScripts(hash) {
     if (hash === '#dashboard' || hash === '') {
-        // Personalize Header
-        const dashWelcome = document.querySelector('.top-header h1');
-        if (dashWelcome) {
-            const fullName = document.querySelector('.user-info h4')?.textContent || 'User';
-            dashWelcome.innerHTML = `Welcome back, ${fullName.split(' ')[0]}! 👋`;
-        }
-
         // Dashboard animations
         setTimeout(() => {
             const circle = document.querySelector('.progress-circle');
@@ -114,6 +138,31 @@ function initViewScripts(hash) {
         }, 100);
     } else if (hash === '#hydration') {
         setupHydrationWidget(true);
+    } else if (hash === '#onboarding') {
+        const form = document.getElementById('onboarding-form');
+        if (form) {
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const btn = document.getElementById('onboarding-submit-btn');
+                btn.textContent = 'Saving Context...';
+                btn.disabled = true;
+
+                const data = {
+                    fullName: document.getElementById('fullName').value,
+                    age: parseInt(document.getElementById('age').value),
+                    weight: parseFloat(document.getElementById('weight').value),
+                    height: parseFloat(document.getElementById('height').value),
+                    goal: document.getElementById('goal').value,
+                    createdAt: new Date().toISOString()
+                };
+
+                await saveUserProfile(data);
+                window.userProfile = await getUserProfile(); // Reload global 
+                await loadUserProfile(); // Update UI sidebars
+                
+                window.location.hash = '#dashboard';
+            });
+        }
     }
 }
 
@@ -199,7 +248,8 @@ async function setupHydrationWidget(isLarge = false) {
          window.waterGlasses = await getHydrationCount();
          window.waterGlassesLoaded = true;
     }
-    const maxGlasses = 8;
+    const maxSecret = document.getElementById('hydro-max-secret');
+    const maxGlasses = maxSecret ? parseInt(maxSecret.textContent) : 8;
     
     const updateUI = () => {
         if(hydroTitle) hydroTitle.innerText = window.waterGlasses;
@@ -323,4 +373,6 @@ window.addEventListener('DOMContentLoaded', () => {
 
     window.addEventListener('resize', handleResize);
     handleResize(); 
+
+    initApp();
 });

@@ -53,3 +53,13 @@ export async function saveHydrationCount(count) {
         lastUpdated: new Date().toISOString()
     }, { merge: true });
 }
+
+export async function saveUserProfile(data) {
+    const uid = getUid();
+    if (!uid) return;
+    await setDoc(doc(db, "users", uid), {
+        ...data,
+        plan: "Free Plan",
+        updatedAt: new Date().toISOString()
+    }, { merge: true });
+}
